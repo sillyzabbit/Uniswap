@@ -1,48 +1,17 @@
-import { Identify, identify, init, track } from '@amplitude/analytics-browser'
-import { isDevelopmentEnv } from 'utils/env'
+import { Identify } from '@amplitude/analytics-browser'
 
 /**
- * Initializes Amplitude with API key for project.
- *
- * Uniswap has two Amplitude projects: test and production. You must be a
- * member of the organization on Amplitude to view details.
+ * Electing to leave tracking logic throughout components / hooks
+ * seems like the easiest, least invasive solution, is to simply replace calls to amplitude with console logs.
  */
+
 export function initializeAnalytics() {
-  if (isDevelopmentEnv()) return
-
-  const API_KEY = process.env.REACT_APP_AMPLITUDE_KEY
-  if (typeof API_KEY === 'undefined') {
-    throw new Error(`REACT_APP_AMPLITUDE_KEY must be a defined environment variable`)
-  }
-
-  init(
-    API_KEY,
-    /* userId= */ undefined, // User ID should be undefined to let Amplitude default to Device ID
-    /* options= */ {
-      // See documentation: https://www.docs.developers.amplitude.com/data/sdks/javascript/#track-referrers
-      includeReferrer: true,
-      // See documentation: https://www.docs.developers.amplitude.com/data/sdks/javascript/#track-utm-parameters
-      includeUtm: true,
-      // Disable tracking of private user information by Amplitude
-      trackingOptions: {
-        ipAddress: false,
-        carrier: false,
-        city: false,
-        region: false,
-        dma: false, // designated market area
-      },
-    }
-  )
+  console.log('failed to initialize analytics.')
 }
 
-/** Sends an event to Amplitude. */
+/** logs what would've been an event to amplitude. */
 export function sendAnalyticsEvent(eventName: string, eventProperties?: Record<string, unknown>) {
-  if (isDevelopmentEnv()) {
-    console.log(`[amplitude(${eventName})]: ${JSON.stringify(eventProperties)}`)
-    return
-  }
-
-  track(eventName, eventProperties)
+  console.log(`[amplitude(${eventName})]: ${JSON.stringify(eventProperties)}`)
 }
 
 type Value = string | number | boolean | string[] | number[]
@@ -53,6 +22,9 @@ type Value = string | number | boolean | string[] | number[]
  *
  * See https://help.amplitude.com/hc/en-us/articles/115002380567-User-properties-and-event-properties
  * for details.
+ *
+ * afaik only call to amplitude was in the private method
+ * public methods just mutating object.
  */
 class UserModel {
   private log(method: string, ...parameters: unknown[]) {
@@ -60,12 +32,8 @@ class UserModel {
   }
 
   private call(mutate: (event: Identify) => Identify) {
-    if (isDevelopmentEnv()) {
-      const log = (_: Identify, method: string) => this.log.bind(this, method)
-      mutate(new Proxy(new Identify(), { get: log }))
-      return
-    }
-    identify(mutate(new Identify()))
+    const log = (_: Identify, method: string) => this.log.bind(this, method)
+    mutate(new Proxy(new Identify(), { get: log }))
   }
 
   set(key: string, value: Value) {
